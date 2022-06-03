@@ -26,7 +26,16 @@ export default class Game extends Phaser.Scene {
         }
         const playerSprite = this.add.sprite(0, 0, "player");
         playerSprite.scale = 1.5;
-        this.cameras.main.startFollow(playerSprite, true);
+
+        const text = this.add.text(0, -10, "n00b", {
+            fixedWidth: playerSprite.width*1.5,
+            align: 'center'
+        });
+        text.setColor("#000000");
+
+        const container = this.add.container(0, 0, [playerSprite, text]);
+
+        this.cameras.main.startFollow(container, true);
         this.cameras.main.setFollowOffset(-playerSprite.width, -playerSprite.height);
 
         const gridEngineConfig = {
@@ -34,11 +43,14 @@ export default class Game extends Phaser.Scene {
                 {
                     id: "player",
                     sprite: playerSprite,
+                    container,
                     walkingAnimationMapping: 6,
+                    walkingAnimationEnabled: true,
                     startPosition: { x: 8, y: 8 },
                 },
-            ],
+            ]
         };
+
 
         this.gridEngine.create(cloudCityTilemap, gridEngineConfig);
     }
