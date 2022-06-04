@@ -1,6 +1,7 @@
 import 'phaser'
 import { GridEngine } from 'grid-engine'
 import Game from './scenes/Game'
+import Pacman from './scenes/Pacman'
 
 export default new Phaser.Game({
     type: Phaser.AUTO,
@@ -11,7 +12,7 @@ export default new Phaser.Game({
         default: 'arcade',
         arcade: {
             gravity: { y: 0 },
-            debug: true
+            debug: false
         }
     },
     plugins: {
@@ -24,5 +25,5 @@ export default new Phaser.Game({
         ],
     },
 
-    scene: [Game],
+    scene: [Game, Pacman],
 })

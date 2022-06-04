@@ -39,6 +39,7 @@ export default class Game extends Phaser.Scene {
         this.cameras.main.setFollowOffset(-playerSprite.width, -playerSprite.height);
 
         const gridEngineConfig = {
+            numberOfDirections: 8,
             characters: [
                 {
                     id: "player",
@@ -65,6 +66,20 @@ export default class Game extends Phaser.Scene {
             this.gridEngine.move("player", Direction.UP);
         } else if (cursors.down.isDown) {
             this.gridEngine.move("player", Direction.DOWN);
+        } else if (cursors.left.isDown && cursors.up.isDown) {
+            this.gridEngine.move("player", Direction.UP_LEFT);
+        } else if (cursors.left.isDown && cursors.down.isDown) {
+            this.gridEngine.move("player", Direction.DOWN_LEFT);
+        } else if (cursors.right.isDown && cursors.up.isDown) {
+            this.gridEngine.move("player", Direction.UP_RIGHT);
+        } else if (cursors.right.isDown && cursors.down.isDown) {
+            this.gridEngine.move("player", Direction.DOWN_RIGHT);
+        }
+
+        const mouse = this.input.activePointer;
+        if(mouse.leftButtonDown()) {
+            console.log('xxx');
+            this.scene.start('pacman');
         }
     }
 }
