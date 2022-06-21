@@ -1,5 +1,6 @@
 import 'phaser';
-//import VirtualJoystick from 'phaser3-rex-plugins/plugins/virtualjoystick.js';
+import VirtualJoystick from 'phaser3-rex-plugins/plugins/virtualjoystick.js';
+//import VirtualJoystickPlugin from 'phaser3-rex-plugins/plugins/virtualjoystick-plugin.js'
 
 const numCoins = 10;
 const numFruits = 5;
@@ -35,6 +36,9 @@ export default class Pacman extends Phaser.Scene {
         this.createAnimations(); 
         this.createPlayer();
         this.showScore();
+        for (let i = 0; i < numCoins; i++) setTimeout(() => this.createCoin(), Phaser.Math.Between(0, 5000));
+        for (let i2 = 0; i2 < numFruits; i2++) setTimeout(() => this.createFruits(), Phaser.Math.Between(0, 5000));
+        for (let i3 = 0; i3 < numGhosts; i3++) setTimeout(() => this.createGhost(), Phaser.Math.Between(0, 15000));
     }
 
     update(time, delta) {
@@ -133,13 +137,23 @@ export default class Pacman extends Phaser.Scene {
         // Show the joysticks only in mobile devices
         //if (!this.sys.game.device.os.desktop) {
 
-            joyStick = this.plugins.get('rexVirtualJoystick');
+            // let joyStickPlugin = this.plugins.get('rexVirtualJoystick');
 
-            joyStick.add(this, {
+            // //console.log(jo);
+
+            // joyStick = joyStickPlugin.addPlayer(this, {
+            //     x: 210, y: 230, radius: 20,
+            //     base: this.add.circle(0, 0, 20, 0x888888).setAlpha(0.5).setDepth(4),
+            //     thumb: this.add.circle(0, 0, 20, 0xcccccc).setAlpha(0.5).setDepth(4)
+            // }).on('update', this.update, this);
+            joyStick = new VirtualJoystick(this, {
                 x: 210, y: 230, radius: 20,
                 base: this.add.circle(0, 0, 20, 0x888888).setAlpha(0.5).setDepth(4),
                 thumb: this.add.circle(0, 0, 20, 0xcccccc).setAlpha(0.5).setDepth(4)
-            }).on('update', this.update, this);
+            });
+            // joyStick.createCursorKeys();
+            // joyStick.on('update', this.update);
+
         //}
     }
     showScore() {
@@ -151,5 +165,80 @@ export default class Pacman extends Phaser.Scene {
         point.destroy();
         score += 5;
         this.showScore();
+    }
+
+    newObject(animation, context) {
+        const tile = Phaser.Utils.Array.GetRandom(emptyTiles);
+        return context.physics.add.sprite(tile.pixelX, tile.pixelY, 'sprites').setOrigin(0).anims.play(animation, true);
+    }
+    createCoin() {
+        let coin = this.newObject('spinning', this);
+        coin.body.setAllowGravity(false);
+        this.physics.add.overlap(player, coin, this.collectCoin, null, this);
+    }
+    protect(color) {
+        player.setTint(color);
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(() => { timeout = false; player.clearTint() }, 5000);
+    }
+    collectCoin(player, coin) {
+        bell2.play();
+        coin.destroy();
+        this.createCoin();
+        score += 10;
+        this.showScore();
+        this.protect(0xFFFF00);
+    }
+
+    createFruits() {
+        let fruits = this.newObject('fruits', this);
+        fruits.body.setAllowGravity(false);
+        this.physics.add.overlap(player, fruits, this.collectFruits, null, this);
+    }
+
+    collectFruits(player, fruits) {
+        bell2.play();
+        fruits.destroy();
+        this.createFruits();
+        score += 15;
+        this.showScore();
+    }
+
+    newGhost(animation, context) {
+        const spawnPoint = map.findObject("Objects", obj => obj.name === "Spawn Point 2");
+        return context.physics.add.sprite(spawnPoint.x, spawnPoint.y, 'sprites').setOrigin(0).anims.play(animation, true).setDepth(2);
+    }
+
+    createGhost() {
+        const colors = ['blue', 'pink', 'yellow', 'green', 'orange', 'red'];
+        let ghost = this.newGhost(colors[Phaser.Math.Between(0, colors.length - 1)], this).setCollideWorldBounds(true).setBounce(1);
+        ghost.setVelocity(Phaser.Math.Between(speed / 3, speed / 2), Phaser.Math.Between(-speed / 2, -speed / 3)).body.setAllowGravity(false);
+        this.physics.add.collider(ghost, worldLayer);
+        this.physics.add.overlap(player, ghost, this.hitGhost, null, this);
+    }
+
+    hitGhost(player, ghost) {
+        // If the player is already hurt, it cannot be hurt again for a while
+        if (player.tintTopLeft == 0xFF00FF) return;
+        if (timeout) {
+            score += 15;
+            dead.play();
+        }
+        else {
+            lives--;
+            hurt.play();
+            this.protect(0xFF00FF);
+        }
+        this.showScore();
+        if (lives == 0) {
+            this.physics.pause();
+            gameOver = true;
+            this.add.image(210, 230, 'restart').setScale(2).setScrollFactor(0).setDepth(4)
+                .setInteractive().on('pointerdown', () => location.reload());
+        }
+        else {
+            ghost.destroy();
+            this.createGhost();
+        }
     }
 }
