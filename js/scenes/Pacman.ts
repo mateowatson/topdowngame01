@@ -5,6 +5,12 @@ import VirtualJoystick from 'phaser3-rex-plugins/plugins/virtualjoystick.js';
 const numCoins = 10;
 const numFruits = 5;
 const numGhosts = 5;
+let totalPointsAvailable = 0;
+let ghost1Released = false;
+let ghost2Released = false;
+let ghost3Released = false;
+let ghost4Released = false;
+let eatGhostsMode = 0;
 let speed = 60, vX = 0, vY = 0, prevX = 0, prevY = 0, prevTime = 0;
 let belowLayer, worldLayer, aboveLayer, tileset, emptyTiles;
 let map, player, cursors, bell, bell2, dead, hurt, timeout;
@@ -35,10 +41,9 @@ export default class Pacman extends Phaser.Scene {
         this.createWorld();
         this.createAnimations(); 
         this.createPlayer();
-        this.showScore();
         for (let i = 0; i < numCoins; i++) setTimeout(() => this.createCoin(), Phaser.Math.Between(0, 5000));
         for (let i2 = 0; i2 < numFruits; i2++) setTimeout(() => this.createFruits(), Phaser.Math.Between(0, 5000));
-        for (let i3 = 0; i3 < numGhosts; i3++) setTimeout(() => this.createGhost(), Phaser.Math.Between(0, 15000));
+        //for (let i3 = 0; i3 < numGhosts; i3++) setTimeout(() => this.createGhost(), Phaser.Math.Between(0, 15000));
     }
 
     update(time, delta) {
@@ -68,6 +73,13 @@ export default class Pacman extends Phaser.Scene {
             prevY = player.y;
             prevTime = time;
         }
+        // handle eat ghosts mode
+        if(eatGhostsMode - delta < 0) {
+            eatGhostsMode = 0;
+        } else {
+            eatGhostsMode -= delta;
+        }
+        this.showScore();
     }
 
     initSounds() {
@@ -132,39 +144,42 @@ export default class Pacman extends Phaser.Scene {
         emptyTiles.forEach(tile => {
             let point = this.physics.add.sprite(tile.pixelX, tile.pixelY, 'sprites').setOrigin(0).anims.play('point', true);
             this.physics.add.overlap(player, point, this.collectPoint, null, this);
+            totalPointsAvailable++;
         });
+        // keyboard keys
         cursors = this.input.keyboard.createCursorKeys();
-        // Show the joysticks only in mobile devices
-        //if (!this.sys.game.device.os.desktop) {
-
-            // let joyStickPlugin = this.plugins.get('rexVirtualJoystick');
-
-            // //console.log(jo);
-
-            // joyStick = joyStickPlugin.addPlayer(this, {
-            //     x: 210, y: 230, radius: 20,
-            //     base: this.add.circle(0, 0, 20, 0x888888).setAlpha(0.5).setDepth(4),
-            //     thumb: this.add.circle(0, 0, 20, 0xcccccc).setAlpha(0.5).setDepth(4)
-            // }).on('update', this.update, this);
-            joyStick = new VirtualJoystick(this, {
-                x: 210, y: 230, radius: 20,
-                base: this.add.circle(0, 0, 20, 0x888888).setAlpha(0.5).setDepth(4),
-                thumb: this.add.circle(0, 0, 20, 0xcccccc).setAlpha(0.5).setDepth(4)
-            });
-            // joyStick.createCursorKeys();
-            // joyStick.on('update', this.update);
-
-        //}
+        // onscren joystick
+        joyStick = new VirtualJoystick(this, {
+            x: 210, y: 230, radius: 20,
+            base: this.add.circle(0, 0, 20, 0x888888).setAlpha(0.5).setDepth(4),
+            thumb: this.add.circle(0, 0, 20, 0xcccccc).setAlpha(0.5).setDepth(4)
+        });
     }
     showScore() {
         if (!scoreText) scoreText = this.add.text(map.widthInPixels / 2, 4, '', { fontSize: (18) + 'px', color: '#ffffff' }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(4);
-        scoreText.setText('Score:' + score + ' / Lives:' + lives);
+        scoreText.setText('Score:' + score + '/'+totalPointsAvailable+', '+Math.round(eatGhostsMode)+' | Lives:' + lives);
     }
     collectPoint(player, point) {
         bell.play();
         point.destroy();
-        score += 5;
+        score += 1;
         this.showScore();
+        if(score >= totalPointsAvailable/4 && !ghost1Released) {
+            this.createGhost();
+            ghost1Released = true;
+        }
+        if(score >= totalPointsAvailable/3 && !ghost2Released) {
+            this.createGhost();
+            ghost2Released = true;
+        }
+        if(score >= totalPointsAvailable/2 && !ghost3Released) {
+            this.createGhost();
+            ghost3Released = true;
+        }
+        if(score >= totalPointsAvailable && !ghost4Released) {
+            this.createGhost();
+            ghost4Released = true;
+        }
     }
 
     newObject(animation, context) {
@@ -185,9 +200,12 @@ export default class Pacman extends Phaser.Scene {
         bell2.play();
         coin.destroy();
         this.createCoin();
-        score += 10;
-        this.showScore();
         this.protect(0xFFFF00);
+        this.increaseEatGhostsMode();
+    }
+
+    increaseEatGhostsMode() {
+        eatGhostsMode += 2000;
     }
 
     createFruits() {
@@ -200,8 +218,7 @@ export default class Pacman extends Phaser.Scene {
         bell2.play();
         fruits.destroy();
         this.createFruits();
-        score += 15;
-        this.showScore();
+        this.increaseEatGhostsMode();
     }
 
     newGhost(animation, context) {
@@ -218,10 +235,15 @@ export default class Pacman extends Phaser.Scene {
     }
 
     hitGhost(player, ghost) {
+        if(eatGhostsMode) {
+            ghost.destroy();
+            bell2.play();
+            return;
+        }
         // If the player is already hurt, it cannot be hurt again for a while
         if (player.tintTopLeft == 0xFF00FF) return;
         if (timeout) {
-            score += 15;
+            //score += 15;
             dead.play();
         }
         else {
@@ -229,16 +251,11 @@ export default class Pacman extends Phaser.Scene {
             hurt.play();
             this.protect(0xFF00FF);
         }
-        this.showScore();
         if (lives == 0) {
             this.physics.pause();
             gameOver = true;
             this.add.image(210, 230, 'restart').setScale(2).setScrollFactor(0).setDepth(4)
                 .setInteractive().on('pointerdown', () => location.reload());
-        }
-        else {
-            ghost.destroy();
-            this.createGhost();
         }
     }
 }

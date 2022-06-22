@@ -78,7 +78,6 @@ export default class Game extends Phaser.Scene {
 
         const mouse = this.input.activePointer;
         if(mouse.leftButtonDown()) {
-            console.log('xxx');
             this.scene.start('pacman');
         }
     }
